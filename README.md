@@ -1,2 +1,2 @@
 # LLM-lectures
-learning LLM and agentic Ai 
+learning LLM
