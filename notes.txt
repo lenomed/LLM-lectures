@@ -1,0 +1,976 @@
+1. What is an LLM?
+
+A Large Language Model (LLM) is a neural network trained on a very large collection of text to model the statistical structure of language.
+
+At its core, a language model estimates:
+
+P(next token∣previous tokens)
+
+In simpler terms:
+
+Given everything I've seen so far, what token is most likely to come next?
+
+For example:
+
+The capital of France is
+
+The model might assign probabilities approximately like:
+
+Paris      0.95
+London     0.01
+Berlin     0.005
+...
+
+The model then generates a token and repeats the process.
+
+Therefore, a fundamental way to think about an LLM is:
+
+Context
+   ↓
+Predict next token
+   ↓
+Add token to context
+   ↓
+Predict next token
+   ↓
+Repeat
+
+This deceptively simple operation becomes extremely powerful when the model has:
+
+billions of parameters
+enormous training datasets
+large compute budgets
+sophisticated neural-network architectures
+extensive post-training
+2. The LLM Development Pipeline
+
+A simplified modern LLM pipeline looks like:
+
+                  INTERNET
+                     │
+                     ▼
+              DATA COLLECTION
+                     │
+                     ▼
+             DATA PROCESSING
+                     │
+                     ▼
+                TOKENIZATION
+                     │
+                     ▼
+              PRETRAINING
+                     │
+                     ▼
+               BASE MODEL
+                     │
+                     ▼
+             POST-TRAINING
+                     │
+             ┌───────┴────────┐
+             ▼                ▼
+            SFT               RL
+             │                │
+             └───────┬────────┘
+                     ▼
+              AI ASSISTANT
+
+The first major stage is pretraining.
+
+During pretraining, the model consumes enormous quantities of text and learns to predict the next token.
+
+The result is a base model.
+
+The base model is then post-trained to make it behave more like an assistant.
+
+Karpathy later discusses supervised fine-tuning, reinforcement learning, RLHF, reasoning models, and related techniques in the rest of the lecture.
+
+3. Pretraining Data
+3.1 Where does the data come from?
+
+Large language models require enormous datasets.
+
+A significant source of this data is the public internet.
+
+One example discussed by Karpathy is FineWeb, a large-scale dataset derived from web data.
+
+The internet itself is not directly fed into the neural network.
+
+Instead, a pipeline is used to transform raw web content into useful training data.
+
+Conceptually:
+
+Web
+ ↓
+Common Crawl / Web snapshots
+ ↓
+Filtering
+ ↓
+Cleaning
+ ↓
+Deduplication
+ ↓
+Language filtering
+ ↓
+Quality filtering
+ ↓
+Training dataset
+4. From the Internet to Training Data
+
+A huge amount of internet content is not useful for training.
+
+The raw web contains:
+
+advertisements
+navigation menus
+duplicate pages
+spam
+malformed HTML
+machine-generated content
+inappropriate material
+irrelevant metadata
+low-quality text
+
+Therefore, the dataset needs extensive preprocessing.
+
+Typical preprocessing operations
+Raw web pages
+     ↓
+Remove unwanted URLs
+     ↓
+Extract text
+     ↓
+Language detection
+     ↓
+Quality filtering
+     ↓
+Remove duplicates
+     ↓
+Create dataset
+
+This is an important lesson:
+
+Training an LLM is not simply a matter of downloading the internet and running gradient descent.
+
+Data engineering is a major component of modern AI.
+
+5. Tokenization
+
+Neural networks operate on numbers.
+
+They don't directly consume English words, paragraphs, or sentences.
+
+Therefore, text needs to be converted into tokens.
+
+Example:
+
+"Machine learning is powerful"
+
+might become something conceptually like:
+
+["Machine", " learning", " is", " powerful"]
+
+However, tokens are not necessarily complete words.
+
+A tokenizer can split text into:
+
+words
+subwords
+characters
+bytes
+
+depending on the tokenizer.
+
+For example:
+
+unbelievable
+
+could conceptually become:
+
+un
+believ
+able
+
+The exact representation depends on the tokenizer.
+
+6. Why Tokenization Matters
+
+Tokenization creates a bridge:
+
+Human language
+      ↓
+Tokenizer
+      ↓
+Token IDs
+      ↓
+Neural network
+
+Each token is mapped to an integer.
+
+For example:
+
+"Hello world"
+
+could become:
+
+[15496, 995]
+
+The exact numbers are determined by the tokenizer's vocabulary.
+
+Therefore, the model isn't literally seeing:
+
+Hello world
+
+It sees something closer to:
+
+[15496, 995]
+
+These IDs are then converted into continuous numerical vectors called embeddings.
+
+7. Neural Network Input and Output
+
+The basic flow is:
+
+Text
+ ↓
+Tokenizer
+ ↓
+Token IDs
+ ↓
+Embeddings
+ ↓
+Transformer
+ ↓
+Logits
+ ↓
+Probability distribution
+ ↓
+Next token
+
+Suppose the input is:
+
+The sky is
+
+The tokenizer converts this into token IDs.
+
+The neural network processes them and produces a vector of numbers called logits.
+
+Conceptually:
+
+logits
+│
+├── blue       8.2
+├── cloudy     6.1
+├── green      1.2
+├── running    0.4
+└── ...
+
+A softmax operation converts logits into probabilities.
+
+Logits
+  ↓
+Softmax
+  ↓
+Probability distribution
+
+For example:
+
+blue       0.82
+cloudy     0.12
+green      0.01
+...
+
+The model can then sample/select a token.
+
+8. The Transformer
+
+The architecture behind modern LLMs is primarily the Transformer.
+
+The Transformer was introduced in the 2017 paper:
+
+Attention Is All You Need
+
+The architecture allows neural networks to process sequences while modeling relationships between tokens.
+
+A simplified Transformer looks like:
+
+Token IDs
+    ↓
+Token Embeddings
+    ↓
+Transformer Block
+    ↓
+Transformer Block
+    ↓
+Transformer Block
+    ↓
+...
+    ↓
+Final Representation
+    ↓
+Language Modeling Head
+    ↓
+Logits
+
+Modern LLMs may contain many Transformer blocks.
+
+Each block performs transformations that allow the model to build increasingly sophisticated representations of the input.
+
+9. Embeddings
+
+Token IDs themselves don't contain meaningful mathematical relationships.
+
+For example:
+
+"cat" → 5321
+"dog" → 9274
+
+The numbers 5321 and 9274 don't inherently tell the neural network that cats and dogs are related.
+
+Instead, tokens are mapped into vectors.
+
+For example:
+
+cat → [0.21, -0.43, 0.72, ...]
+dog → [0.18, -0.39, 0.68, ...]
+car → [-0.72, 0.91, -0.14, ...]
+
+These vectors are learned during training.
+
+The model therefore develops a geometric representation of linguistic information.
+
+10. Attention
+
+One of the most important components of the Transformer is self-attention.
+
+Attention allows tokens to interact with other tokens in the sequence.
+
+Consider:
+
+The animal didn't cross the road because it was tired.
+
+The model needs to determine what "it" refers to.
+
+Attention allows information from different positions in the sequence to interact.
+
+Conceptually:
+
+The ──────────────┐
+animal ───────────┤
+didn't ───────────┤
+cross ────────────┤
+the ──────────────┤
+road ─────────────┤
+because ──────────┤
+it ───────────────┤
+was ──────────────┤
+tired ────────────┘
+        ↓
+    Attention
+
+The model learns which tokens should influence each other.
+
+11. The Residual Stream
+
+Transformer architectures repeatedly transform representations.
+
+A useful mental model is to imagine a shared information highway:
+
+Input representation
+        │
+        ▼
+   Residual Stream
+        │
+   ┌────┴────┐
+   │         │
+Attention   MLP
+   │         │
+   └────┬────┘
+        │
+        ▼
+Updated representation
+
+Each Transformer block modifies the representation.
+
+As the representation passes through more layers, the model can construct increasingly sophisticated information.
+
+Early layers may capture relatively simple patterns.
+
+Later layers can represent more complex relationships and abstractions.
+
+12. Training the Language Model
+
+The fundamental training objective is surprisingly simple:
+
+Predict the next token.
+
+Suppose the training sequence is:
+
+The cat sat on the mat
+
+The model can create multiple training examples:
+
+Input: The
+Target: cat
+
+
+Input: The cat
+Target: sat
+
+
+Input: The cat sat
+Target: on
+
+
+Input: The cat sat on
+Target: the
+
+
+Input: The cat sat on the
+Target: mat
+
+So one sequence provides many prediction problems.
+
+13. Next-Token Prediction
+
+Mathematically, the model learns a probability distribution:
+
+P(x
+t
+	​
+
+∣x
+1
+	​
+
+,x
+2
+	​
+
+,...,x
+t−1
+	​
+
+)
+
+where:
+
+x
+t
+	​
+
+ = current/next token
+x
+1
+	​
+
+...x
+t−1
+	​
+
+ = previous tokens
+
+The model therefore learns:
+
+P(next token∣context)
+
+This is the core objective of autoregressive language modeling.
+
+Example
+
+Input:
+
+Artificial intelligence is
+
+Possible predictions:
+
+powerful    0.31
+changing    0.24
+important   0.15
+...
+
+During training, the model compares its predicted distribution with the actual next token.
+
+14. Loss and Optimization
+
+The model initially performs poorly.
+
+Its predictions might be nearly random.
+
+Training improves the model by minimizing a loss function, typically cross-entropy loss for next-token prediction.
+
+Conceptually:
+
+Training data
+     ↓
+Model prediction
+     ↓
+Compare with correct token
+     ↓
+Calculate loss
+     ↓
+Backpropagation
+     ↓
+Gradient
+     ↓
+Update parameters
+     ↓
+Repeat
+
+This happens an enormous number of times.
+
+The parameters of the neural network are gradually adjusted so that the model becomes better at predicting tokens.
+
+15. What Does the Model Actually Learn?
+
+This is one of the most interesting ideas.
+
+The model isn't explicitly programmed with rules such as:
+
+IF subject = "France"
+THEN answer = "Paris"
+
+Instead, patterns are learned through optimization.
+
+The parameters encode statistical structures learned from the training data.
+
+The model can therefore learn relationships involving:
+
+grammar
+syntax
+facts
+programming patterns
+writing styles
+semantic relationships
+mathematical patterns
+reasoning patterns
+associations between concepts
+
+However, these aren't stored like entries in a traditional database.
+
+A useful mental model is:
+
+The parameters contain a distributed, imperfect representation of patterns learned from training.
+
+16. Inference
+
+Inference is what happens when we use the trained model.
+
+Training:
+
+Data
+ ↓
+Prediction
+ ↓
+Loss
+ ↓
+Backpropagation
+ ↓
+Weight update
+
+Inference:
+
+Prompt
+ ↓
+Tokenization
+ ↓
+Transformer
+ ↓
+Probability distribution
+ ↓
+Token selection
+ ↓
+New token
+ ↓
+Repeat
+
+During ordinary inference, the model's learned weights aren't continuously updated.
+
+17. Autoregressive Generation
+
+Suppose the prompt is:
+
+The weather today is
+
+The model predicts:
+
+beautiful
+
+Now the context becomes:
+
+The weather today is beautiful
+
+The model predicts the next token.
+
+Maybe:
+
+and
+
+Now:
+
+The weather today is beautiful and
+
+Then:
+
+warm
+
+And so on.
+
+Therefore:
+
+Prompt
+ ↓
+Token 1
+ ↓
+Token 2
+ ↓
+Token 3
+ ↓
+Token 4
+ ↓
+...
+
+This process is called autoregressive generation.
+
+18. Sampling
+
+The model doesn't always have to select the highest-probability token.
+
+It can sample from the probability distribution.
+
+For example:
+
+Paris      0.70
+London     0.15
+Berlin     0.10
+Madrid     0.05
+
+Different sampling strategies can produce different outputs.
+
+This is part of why the same prompt can sometimes generate different responses.
+
+Important inference concepts include:
+
+temperature
+top-k sampling
+top-p / nucleus sampling
+greedy decoding
+
+These control how deterministic or diverse generation is.
+
+19. GPT-2 as a Concrete Example
+
+Karpathy uses GPT-2 as a concrete example because it makes the entire LLM pipeline easier to understand.
+
+GPT-2 is useful pedagogically because it is:
+
+a real Transformer language model
+publicly documented
+relatively small compared with modern frontier models
+reproducible
+possible to study at the implementation level
+
+Karpathy also discusses reproducing GPT-2 training through his llm.c work.
+
+This is an important lesson for someone learning LLM engineering:
+
+Don't only study modern billion-parameter models as black boxes. Build or reproduce a smaller model so you understand what is happening underneath.
+
+20. Base Models
+
+Pretraining produces a base model.
+
+The base model's fundamental behavior is:
+
+Given previous tokens,
+predict what token comes next.
+
+This doesn't necessarily mean that it behaves like ChatGPT.
+
+For example, if you prompt a base model with:
+
+User: What is the capital of France?
+Assistant:
+
+it may not necessarily respond like a polished assistant.
+
+It might continue the text in whatever way is statistically likely based on its training distribution.
+
+This distinction is extremely important.
+
+21. Llama 3.1
+
+Karpathy demonstrates inference using a Llama 3.1 base model.
+
+This illustrates the difference between interacting with a raw pretrained model and interacting with an instruction-tuned assistant.
+
+A base model can be extremely capable while still not behaving like a conversational assistant.
+
+That capability comes from the pretrained representation.
+
+The assistant-like behavior is added later.
+
+22. Base Model vs Assistant
+
+Think of the process like teaching a student.
+
+Stage 1 — Pretraining
+
+The model is exposed to enormous amounts of text.
+
+Books
+Web
+Code
+Articles
+Documents
+...
+       ↓
+Pretraining
+       ↓
+Base Model
+
+It learns language patterns and knowledge.
+
+Stage 2 — Post-training
+
+The model is shown examples of desirable behavior.
+
+Question → Good answer
+Question → Good answer
+Instruction → Good response
+Conversation → Good response
+
+This transforms the base model into something more useful as an assistant.
+
+23. Pretraining vs Post-Training
+
+This distinction is fundamental.
+
+Pretraining
+
+Goal:
+
+Learn broad patterns from massive amounts of data.
+
+Typical objective:
+
+Predict the next token
+
+Result:
+
+BASE MODEL
+Post-training
+
+Goal:
+
+Make the model useful, controllable, and aligned with desired behavior.
+
+This can include:
+
+supervised fine-tuning
+human demonstrations
+preference data
+reinforcement learning
+RLHF
+reasoning training
+
+Result:
+
+ASSISTANT MODEL
+
+Karpathy begins discussing this transition around 59:23, with post-training data/conversations beginning around 1:01:06.
+
+24. The Complete Mental Model
+
+The most useful mental model from the first hour is:
+
+                         RAW INTERNET
+                              │
+                              ▼
+                     DATA COLLECTION
+                              │
+                              ▼
+                   CLEANING / FILTERING
+                              │
+                              ▼
+                         TEXT DATA
+                              │
+                              ▼
+                       TOKENIZATION
+                              │
+                              ▼
+                         TOKEN IDs
+                              │
+                              ▼
+                         EMBEDDINGS
+                              │
+                              ▼
+                       TRANSFORMER
+                    ┌─────────┴─────────┐
+                    │                   │
+                Attention              MLP
+                    │                   │
+                    └─────────┬─────────┘
+                              ▼
+                     TRANSFORMER LAYERS
+                              │
+                              ▼
+                           LOGITS
+                              │
+                              ▼
+                          SOFTMAX
+                              │
+                              ▼
+                    NEXT-TOKEN PROBABILITIES
+                              │
+                              ▼
+                       TOKEN SELECTION
+                              │
+                              ▼
+                     GENERATED TOKEN
+                              │
+                              └───────┐
+                                      │
+                                      ▼
+                              BACK INTO CONTEXT
+                                      │
+                                      └──→ REPEAT
+
+Then:
+
+                 PRETRAINED BASE MODEL
+                          │
+                          ▼
+                    POST-TRAINING
+                          │
+             ┌────────────┴────────────┐
+             ▼                         ▼
+     Supervised Fine-Tuning     Reinforcement Learning
+             │                         │
+             └────────────┬────────────┘
+                          ▼
+                   ASSISTANT MODEL
+25. The Most Important Concepts to Remember
+1. LLMs operate on tokens
+
+Not words.
+
+Text → Tokens → Numbers
+2. Transformers process token representations
+Token IDs
+   ↓
+Embeddings
+   ↓
+Transformer
+3. Attention lets tokens interact
+
+The model can use information from different parts of the context when constructing its representation.
+
+4. Pretraining is fundamentally next-token prediction
+P(x
+t
+	​
+
+∣x
+1
+	​
+
+,...,x
+t−1
+	​
+
+)
+5. Training and inference are different
+
+Training:
+
+Prediction → Loss → Backpropagation → Weight update
+
+Inference:
+
+Prompt → Prediction → Token → Prediction → Token → ...
+6. The base model is not necessarily an assistant
+
+Pretraining creates the base model.
+
+Post-training turns it into a more useful assistant.
+
+7. Data is extremely important
+
+The quality of an LLM isn't determined only by architecture.
+
+The training pipeline also matters enormously:
+
+Data quality
++
+Data quantity
++
+Architecture
++
+Compute
++
+Optimization
++
+Post-training
+26. Important Terminology
+Term	Meaning
+LLM	Large Language Model
+Token	A unit of text processed by the model
+Tokenizer	Converts text into tokens/token IDs
+Token ID	Integer representing a token
+Embedding	Vector representation of a token
+Transformer	Neural-network architecture used by modern LLMs
+Attention	Mechanism allowing tokens to interact
+Parameter	Learned numerical value in the model
+Logit	Unnormalized score for a possible next token
+Softmax	Converts logits into probabilities
+Inference	Using a trained model to generate predictions
+Pretraining	Initial large-scale training of the base model
+Base model	Model produced by pretraining
+Post-training	Training performed after pretraining
+SFT	Supervised Fine-Tuning
+RL	Reinforcement Learning
+RLHF	Reinforcement Learning from Human Feedback
+Context	Tokens currently available to the model
+Autoregressive	Generating one token based on previous tokens
+Cross-entropy loss	Common loss function for next-token prediction
+27. Questions I Should Be Able to Answer After This Section
+
+You should be able to explain these without looking at the notes:
+
+What is an LLM?
+
+A neural network trained to model the probability distribution of token sequences, commonly by predicting the next token given previous tokens.
+
+What is tokenization?
+
+The process of converting raw text into discrete tokens that can be represented numerically and processed by a neural network.
+
+Why can't we feed raw text directly into a neural network?
+
+Neural networks operate on numerical representations, so text must first be converted into token IDs and then embeddings.
+
+What does a Transformer do?
+
+It processes token representations using mechanisms such as self-attention and feed-forward networks to build contextual representations.
+
+What is the fundamental training objective?
+
+Predict the next token in a sequence.
+
+What is inference?
+
+Running the trained model to generate predictions without performing the normal training weight updates.
+
+What is a base model?
+
+A pretrained language model whose fundamental capability is next-token prediction, before assistant-oriented post-training.
+
+Why isn't a base model automatically ChatGPT?
+
+Because pretraining teaches broad language modeling, while assistant behavior is largely developed through post-training.
+
+28. My Mental Model
+
+A useful personal summary is:
+
+An LLM is a very large neural network that learns statistical patterns in token sequences. During pretraining, it repeatedly tries to predict the next token and adjusts billions of parameters using gradient-based optimization. Once trained, the model can generate text autoregressively by repeatedly predicting the next token. Modern assistant models then undergo additional post-training to make their behavior more useful and instruction-following.
