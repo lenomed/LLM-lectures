@@ -1,0 +1,892 @@
+# Deep Dive into LLMs like ChatGPT — Second Hour Notes
+
+## 1. Pretraining vs. Post-Training
+
+A pretrained language model learns to predict the next token from enormous amounts of text.
+
+The result is a **base model** that has learned language patterns, facts, reasoning patterns, code, and other structures found in its training data.
+
+However, a base model is not automatically a useful conversational assistant.
+
+### Pretraining
+
+```text
+Large-scale internet/text data
+        ↓
+     Pretraining
+        ↓
+     Base model
+        ↓
+Next-token prediction
+```
+
+### Post-training
+
+Post-training adapts the base model into a system that follows instructions and behaves more like an assistant.
+
+```text
+Base model
+    ↓
+Post-training
+    ↓
+Assistant model
+```
+
+Post-training generally uses much less data and compute than the original pretraining stage.
+
+---
+
+# 2. Supervised Fine-Tuning (SFT)
+
+**SFT = Supervised Fine-Tuning.**
+
+SFT trains a pretrained model using examples of desired behavior.
+
+Example:
+
+```text
+User:
+What is 2 + 2?
+
+Assistant:
+2 + 2 is 4.
+```
+
+Another example:
+
+```text
+User:
+Explain gravity to a child.
+
+Assistant:
+Gravity is the force that pulls objects toward one another...
+```
+
+The model learns patterns connecting the user's input with the desired assistant response.
+
+SFT can teach:
+
+* Instruction following
+* Question answering
+* Conversation
+* Coding
+* Mathematics
+* Reasoning
+* Safety behavior
+* Tool usage
+* Model identity
+* Formatting
+* Domain-specific behavior
+
+---
+
+# 3. Programming by Examples
+
+SFT can be thought of as a form of **programming by examples**.
+
+Instead of writing explicit rules such as:
+
+```text
+IF user asks a math question:
+    calculate the answer
+```
+
+the training process provides many examples:
+
+```text
+User: What is 5 × 7?
+Assistant: 35.
+
+User: What is 12 + 19?
+Assistant: 31.
+
+User: What is 100 ÷ 4?
+Assistant: 25.
+```
+
+The neural network adjusts its parameters so that responses similar to the desired examples become more likely.
+
+---
+
+# 4. SFT Data Mixtures
+
+An SFT dataset does not have to contain only one type of task.
+
+Multiple datasets can be combined into an **SFT data mixture**.
+
+For example:
+
+```text
+General instruction following
+Math
+Coding
+Reasoning
+Safety
+Tool use
+Conversation
+Domain-specific knowledge
+```
+
+The datasets can be sampled using different proportions.
+
+Example:
+
+```text
+40% general instruction following
+20% coding
+15% mathematics
+10% reasoning
+10% tool use
+5% safety
+```
+
+The mixture influences the behaviors and capabilities emphasized during fine-tuning.
+
+A large dataset does not automatically need to dominate training. Sampling ratios can deliberately increase or decrease how frequently different datasets are seen.
+
+---
+
+# 5. Conversation Data Becomes Tokens
+
+The model does not fundamentally process a conversation as human-readable concepts.
+
+A conversation is converted into a sequence of tokens.
+
+Conceptually:
+
+```text
+User: Hello
+Assistant: Hi!
+```
+
+becomes:
+
+```text
+[token 1] [token 2] [token 3] [token 4] ...
+```
+
+The model ultimately processes the resulting token sequence.
+
+This means SFT still uses the same fundamental language-model training mechanism:
+
+```text
+Previous tokens
+      ↓
+Predict next token
+```
+
+The major difference is the type and quality of data used during training.
+
+---
+
+# 6. Hallucinations
+
+A hallucination occurs when an LLM produces information that is false, fabricated, or unsupported while presenting it as if it were correct.
+
+Example:
+
+```text
+User:
+Who is a completely unknown person?
+
+Model:
+That person was a famous researcher who...
+```
+
+The person might not even exist.
+
+The model can still produce a convincing answer because its fundamental objective is to generate likely token sequences.
+
+It does not automatically have a reliable internal mechanism that says:
+
+> "I know this fact with certainty."
+
+---
+
+# 7. Why Hallucinations Occur
+
+Suppose training contains many examples like:
+
+```text
+User: Who is X?
+Assistant: X is...
+```
+
+The model learns that questions of the form:
+
+```text
+Who is X?
+```
+
+are normally followed by an explanation.
+
+If X is unknown, the model may still attempt to generate an explanation.
+
+Conceptually:
+
+```text
+Question
+   ↓
+Model predicts likely continuation
+   ↓
+Plausible answer
+```
+
+rather than:
+
+```text
+Question
+   ↓
+Check whether fact is known
+   ↓
+If unknown → say "I don't know"
+```
+
+The second behavior has to be deliberately encouraged through training and system design.
+
+---
+
+# 8. Teaching Models to Say "I Don't Know"
+
+Training can include examples where acknowledging uncertainty is the correct behavior.
+
+```text
+User:
+Who is X?
+
+Assistant:
+I don't have reliable information about X.
+```
+
+This teaches the model that refusing to invent information can sometimes be preferable to producing a confident answer.
+
+However, training alone does not completely eliminate hallucinations.
+
+External verification and tools are often useful.
+
+---
+
+# 9. Tools
+
+LLMs can be connected to external tools.
+
+Examples include:
+
+* Web search
+* Calculators
+* Python
+* Databases
+* APIs
+* File retrieval
+* Code execution
+* External knowledge bases
+
+The model does not need to internally contain every piece of information or perform every calculation itself.
+
+A general architecture is:
+
+```text
+User
+ ↓
+LLM
+ ↓
+Determine whether a tool is needed
+ ↓
+Tool
+ ↓
+Tool result
+ ↓
+Context
+ ↓
+LLM
+ ↓
+Final answer
+```
+
+---
+
+# 10. Tool Calling
+
+Tool usage can be trained using examples.
+
+Conceptually:
+
+```text
+User:
+What is the weather in Lagos?
+
+Assistant:
+[call weather tool]
+
+Tool:
+32°C, sunny
+
+Assistant:
+The temperature is 32°C and it is sunny.
+```
+
+The model learns the structure required to invoke the tool.
+
+The surrounding software detects the tool call, executes the requested operation, and places the result back into the model's context.
+
+---
+
+# 11. Web Search
+
+A web-enabled LLM can use search as an external information source.
+
+Conceptually:
+
+```text
+User question
+      ↓
+LLM
+      ↓
+Search query
+      ↓
+Search engine
+      ↓
+Search results
+      ↓
+Context window
+      ↓
+LLM
+      ↓
+Answer
+```
+
+The search results become additional information available to the model while generating its response.
+
+This is fundamentally different from changing the model's parameters.
+
+The model is not necessarily learning the search results permanently.
+
+The information is temporarily placed into the context.
+
+---
+
+# 12. Parameters vs. Context Window
+
+Two important concepts are:
+
+### Parameters
+
+The model's parameters contain patterns learned during training.
+
+They can encode information about:
+
+* Language
+* Facts
+* Concepts
+* Relationships
+* Coding patterns
+* Reasoning patterns
+* Behaviors
+
+A useful analogy is:
+
+```text
+Parameters → learned knowledge
+```
+
+### Context Window
+
+The context window contains the tokens currently available to the model.
+
+For example:
+
+```text
+System instructions
++
+Conversation
++
+Uploaded document
++
+Search results
++
+Tool outputs
+```
+
+All of this can become part of the model's current context.
+
+A useful analogy is:
+
+```text
+Context → working memory
+```
+
+---
+
+# 13. Why Context Can Be Better Than Relying on Parameters
+
+Suppose a model has encountered a book during training.
+
+It may have some knowledge of the book encoded in its parameters.
+
+But if the exact chapter is placed into the context:
+
+```text
+User:
+Summarize this chapter.
+
+[Chapter text]
+```
+
+the model can directly process the provided text.
+
+The distinction is:
+
+```text
+Parameters:
+"I learned patterns about this information."
+
+Context:
+"The information is directly in front of me."
+```
+
+This is one reason retrieval systems and long-context models are useful.
+
+---
+
+# 14. Model Identity
+
+An LLM does not have a human-like persistent sense of self.
+
+Its responses about its identity can be influenced by:
+
+* Pretraining
+* SFT data
+* System instructions
+* Conversation context
+* Tool outputs
+
+For example:
+
+```text
+System:
+You are Model X.
+
+User:
+What model are you?
+
+Assistant:
+I am Model X.
+```
+
+The identity information exists as part of the model's available context.
+
+---
+
+# 15. Hard-Coded Identity Through Training
+
+Identity can also be taught during SFT.
+
+Example:
+
+```text
+User:
+What is your name?
+
+Assistant:
+I am Model X.
+```
+
+Many examples can establish consistent behavior around:
+
+* Model name
+* Developer
+* Capabilities
+* Limitations
+* Knowledge cutoff
+* Tool availability
+
+This is an example of using training data to shape model behavior.
+
+---
+
+# 16. System Messages
+
+A system message is placed into the model's context before the user's message.
+
+Conceptually:
+
+```text
+System:
+You are an AI assistant.
+Follow these instructions...
+
+User:
+Explain neural networks.
+
+Assistant:
+...
+```
+
+The model receives the system instructions as part of the token sequence it processes.
+
+System instructions can therefore strongly influence the model's behavior without changing its parameters.
+
+---
+
+# 17. Tokens and Computation
+
+An LLM fundamentally generates tokens sequentially during normal autoregressive generation.
+
+Conceptually:
+
+```text
+Input
+ ↓
+Token 1
+ ↓
+Token 2
+ ↓
+Token 3
+ ↓
+Token 4
+ ↓
+...
+```
+
+Each generated token becomes part of the context used to generate subsequent tokens.
+
+This means generated tokens can effectively provide additional computational steps.
+
+---
+
+# 18. Why More Tokens Can Help With Reasoning
+
+Consider:
+
+```text
+Question → Answer
+```
+
+The model has limited space to perform intermediate computation.
+
+Instead:
+
+```text
+Question
+   ↓
+Step 1
+   ↓
+Step 2
+   ↓
+Step 3
+   ↓
+Step 4
+   ↓
+Answer
+```
+
+The intermediate tokens become part of the sequence.
+
+Each additional generated token allows another forward computation.
+
+Therefore, difficult problems can sometimes benefit from producing intermediate reasoning steps.
+
+---
+
+# 19. Reasoning as Sequential Computation
+
+A simplified view is:
+
+```text
+Token 1
+   ↓
+computation
+   ↓
+Token 2
+   ↓
+computation
+   ↓
+Token 3
+   ↓
+computation
+   ↓
+Token 4
+```
+
+The model can use the generated tokens as an externalized computational workspace.
+
+This helps explain why models can perform better when allowed to work through difficult problems step by step.
+
+---
+
+# 20. Forward Pass During Generation
+
+During autoregressive generation, each new token requires another forward computation.
+
+For example:
+
+```text
+Prompt
+ ↓
+Forward computation
+ ↓
+Token 1
+ ↓
+Forward computation
+ ↓
+Token 2
+ ↓
+Forward computation
+ ↓
+Token 3
+```
+
+However, the model does not necessarily recompute the entire previous sequence every time.
+
+It can use **KV caching**.
+
+---
+
+# 21. KV Cache
+
+**KV = Key-Value.**
+
+In self-attention, each token produces:
+
+```text
+Q = Query
+K = Key
+V = Value
+```
+
+During generation, previously calculated Keys and Values can be stored in a **KV cache**.
+
+Conceptually:
+
+```text
+Previous tokens
+      ↓
+Keys + Values
+      ↓
+KV Cache
+      ↓
+Reuse during future generation
+```
+
+This avoids repeatedly recalculating the attention information for all previous tokens.
+
+The model still performs a new forward computation for each generated token, but KV caching makes the process much more efficient.
+
+---
+
+# 22. Why Code Is Useful for LLMs
+
+LLMs are neural networks optimized for predicting token sequences.
+
+They are not traditional calculators.
+
+For exact computation, code can be more reliable.
+
+Instead of:
+
+```text
+LLM:
+23,481 × 9,827 = ?
+```
+
+the model can generate:
+
+```python
+23481 * 9827
+```
+
+A programming language then performs the calculation.
+
+Architecture:
+
+```text
+LLM
+ ↓
+Generate code
+ ↓
+Python/interpreter
+ ↓
+Exact computation
+ ↓
+Result
+ ↓
+LLM
+```
+
+The LLM handles reasoning and task decomposition while the external tool handles deterministic computation.
+
+---
+
+# 23. Counting Problems
+
+LLMs can struggle with seemingly simple tasks such as counting characters.
+
+Example:
+
+```text
+How many "r" characters are in "strawberry"?
+```
+
+The difficulty comes partly from tokenization.
+
+The model does not necessarily represent every individual character as an independent token.
+
+A sequence of characters may be represented as larger token units.
+
+Therefore, character-level operations can be surprisingly difficult for a token-based model.
+
+---
+
+# 24. Using Code to Solve Counting Problems
+
+Instead of asking the model to manually count:
+
+```python
+text.count("r")
+```
+
+can perform the operation exactly.
+
+The model can therefore delegate the task:
+
+```text
+LLM
+ ↓
+Write program
+ ↓
+Program counts characters
+ ↓
+Return exact result
+```
+
+This illustrates a broader principle:
+
+> A capable LLM does not have to perform every operation internally. It can use external systems to extend its capabilities.
+
+---
+
+# 25. Tokenization Creates Unusual Weaknesses
+
+Tokenization can explain why an LLM may be extremely capable in some areas while struggling with simple-looking tasks.
+
+Potential weaknesses include:
+
+* Exact character counting
+* Repeated-character counting
+* Exact spelling manipulation
+* Character-level transformations
+* Some arithmetic
+* Exact numerical comparison
+* Positional operations
+
+The model operates on tokens rather than directly manipulating text in the same way a traditional program does.
+
+---
+
+# 26. LLM + Tools
+
+A powerful AI system can combine the LLM with specialized external systems.
+
+```text
+                    LLM
+                     │
+        ┌────────────┼────────────┐
+        ↓            ↓            ↓
+     Web Search    Python      Database
+        ↓            ↓            ↓
+        └────────────┼────────────┘
+                     ↓
+                Tool Results
+                     ↓
+               Context Window
+                     ↓
+                    LLM
+                     ↓
+                  Answer
+```
+
+The LLM acts as the reasoning and coordination layer while external tools provide capabilities the neural network is not naturally optimized for.
+
+---
+
+# 27. Core Mental Model
+
+An LLM can be understood as:
+
+```text
+Pretraining
+    ↓
+Learn broad patterns
+    ↓
+Base model
+    ↓
+SFT / Post-training
+    ↓
+Learn desired behaviors
+    ↓
+Assistant model
+    ↓
+Context + Parameters
+    ↓
+Generate tokens
+    ↓
+Use tools when necessary
+    ↓
+Final response
+```
+
+### Parameters
+
+Contain patterns learned during training.
+
+### Context
+
+Contains information currently available to the model.
+
+### Tokens
+
+Are the basic units the model processes and generates.
+
+### Forward pass
+
+The neural network computation used to transform the current token sequence into predictions for the next token.
+
+### KV cache
+
+Stores previously computed attention Keys and Values to make autoregressive generation more efficient.
+
+### SFT
+
+Uses supervised examples to shape the behavior of a pretrained model.
+
+### Tools
+
+Provide external information or computation that the model cannot reliably perform internally.
+
+---
+
+# 28. Most Important Takeaways
+
+1. **Pretraining creates the base model; post-training turns it into a more useful assistant.**
+
+2. **SFT teaches behavior through examples rather than explicit programming rules.**
+
+3. **SFT data mixtures combine different types of training examples and control their sampling proportions.**
+
+4. **Hallucinations occur partly because the model is optimized to generate plausible token sequences, not to guarantee factual correctness.**
+
+5. **Training can encourage the model to acknowledge uncertainty instead of inventing information.**
+
+6. **Tools such as web search, Python, databases, and APIs extend an LLM beyond what it can reliably do internally.**
+
+7. **Parameters contain learned patterns, while the context window provides the information currently available to the model.**
+
+8. **Generated tokens can provide additional sequential computation, which helps explain why intermediate reasoning can improve difficult tasks.**
+
+9. **Every generated token requires another forward computation, while KV caching prevents unnecessary recomputation of previous attention states.**
+
+10. **LLMs are token-based systems, so some character-level or exact symbolic tasks can be unexpectedly difficult.**
+
+11. **External tools can compensate for weaknesses in arithmetic, counting, current information, and other deterministic tasks.**
+
+12. **A powerful LLM system is not just the neural network—it is the combination of the model, context, post-training, tools, and surrounding software.**
