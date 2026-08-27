@@ -1,0 +1,1015 @@
+# Deep Dive into Large Language Models — Class Notes
+
+## 1. Tokenization and Its Effect on LLMs
+
+Large Language Models do not directly process text in the same way humans do. Before text enters the neural network, it is converted into **tokens**.
+
+A token can represent:
+
+* A complete word
+* Part of a word
+* Several characters
+* Punctuation
+* Whitespace or other text patterns
+
+For example:
+
+```text
+"Hello world"
+       ↓
+   Tokenizer
+       ↓
+["Hello", " world"]
+```
+
+The exact tokens depend on the tokenizer and vocabulary being used.
+
+The model therefore operates primarily on **token representations**, rather than individual characters.
+
+### Why tokenization matters
+
+Tokenization can create unexpected weaknesses.
+
+Humans naturally manipulate individual characters. An LLM, however, may see a word as one or several token units.
+
+For example:
+
+```text
+strawberry
+     ↓
+[token][token]
+```
+
+The model is not necessarily internally manipulating:
+
+```text
+s → t → r → a → w → b → e → r → r → y
+```
+
+This helps explain why an LLM can sometimes struggle with seemingly simple tasks such as:
+
+* Counting individual letters
+* Determining the exact spelling of a word
+* Manipulating characters
+* Performing precise symbolic operations
+
+A useful solution is to combine the LLM with external tools.
+
+```text
+LLM
+ ↓
+Recognizes that an exact calculation is needed
+ ↓
+External tool / Python
+ ↓
+Exact result
+ ↓
+LLM explains the result
+```
+
+This is an important principle in AI engineering:
+
+> A model does not need to perform every operation itself. It can delegate operations to tools that are better suited for them.
+
+---
+
+# 2. Jagged Intelligence
+
+LLMs exhibit what can be described as **jagged intelligence**.
+
+This means that their capabilities are not evenly distributed.
+
+An LLM may be:
+
+* Excellent at programming
+* Excellent at explaining complex concepts
+* Good at summarization
+* Good at generating text
+* Surprisingly weak at simple arithmetic
+* Weak at certain character-level tasks
+* Inconsistent on tasks that humans consider obvious
+
+For example:
+
+```text
+Complex programming problem
+        ↓
+       ✅
+
+Simple letter-counting problem
+        ↓
+       ❌
+```
+
+This is different from how humans generally experience intelligence.
+
+Humans usually expect someone who is highly capable in one intellectual area to possess at least reasonable competence in many simpler areas.
+
+LLMs don't necessarily behave this way.
+
+### Engineering implication
+
+You should not think:
+
+> "The model is intelligent, therefore it can do everything."
+
+Instead, think:
+
+> "The model has a particular collection of strengths and weaknesses."
+
+When designing an AI system, determine:
+
+1. What the model is good at
+2. What it is unreliable at
+3. Which tasks should be delegated to tools
+4. Which tasks require verification
+5. Where deterministic software should replace model-generated answers
+
+This leads to a broader concept:
+
+```text
+AI System
+   │
+   ├── LLM → language + reasoning
+   ├── Calculator → arithmetic
+   ├── Python → computation
+   ├── Search → information retrieval
+   └── Database → structured information
+```
+
+The intelligence of a modern AI application can therefore come from the **combination of components**, not just the language model.
+
+---
+
+# 3. From Base Models to Assistants
+
+A pretrained language model is not automatically equivalent to ChatGPT.
+
+The development process can be understood as several stages:
+
+```text
+Large-scale data
+      ↓
+Pretraining
+      ↓
+Base model
+      ↓
+Supervised Fine-Tuning
+      ↓
+Instruction-following model
+      ↓
+Reinforcement Learning
+      ↓
+More capable and aligned assistant
+```
+
+Each stage serves a different purpose.
+
+---
+
+# 4. Pretraining
+
+During pretraining, the model is exposed to enormous quantities of data.
+
+The fundamental objective is relatively simple:
+
+> **Predict the next token.**
+
+Suppose the model receives:
+
+```text
+The capital of France is
+```
+
+It must predict a likely next token:
+
+```text
+Paris
+```
+
+At a fundamental level:
+
+```text
+Input tokens
+     ↓
+Neural network
+     ↓
+Probability distribution
+     ↓
+Next token
+```
+
+This process is repeated over enormous amounts of text.
+
+The model gradually develops representations that allow it to predict language effectively.
+
+Through this process it can acquire information about:
+
+* Language
+* Facts
+* Writing styles
+* Programming
+* Mathematics
+* History
+* Science
+* Human behavior
+* Relationships between concepts
+
+The important point is that the base objective is still **next-token prediction**.
+
+---
+
+# 5. Supervised Fine-Tuning
+
+A pretrained model knows how to predict text, but that doesn't automatically mean it knows how to behave like a useful assistant.
+
+Supervised Fine-Tuning (SFT) helps teach the model how to follow instructions.
+
+Training examples may look like:
+
+```text
+User:
+Explain photosynthesis.
+
+Assistant:
+Photosynthesis is the process...
+```
+
+The model is trained on many examples of desirable interactions.
+
+The goal is to transform:
+
+```text
+General text predictor
+```
+
+into:
+
+```text
+Instruction-following assistant
+```
+
+SFT can teach the model:
+
+* How to answer questions
+* How to follow instructions
+* How to format responses
+* How to behave conversationally
+* How to perform particular tasks
+* What kinds of responses are considered desirable
+
+However, SFT generally requires examples of desired behavior.
+
+Humans have to provide demonstrations.
+
+This becomes expensive and difficult when the desired behavior is complicated.
+
+That leads to reinforcement learning.
+
+---
+
+# 6. Reinforcement Learning
+
+Reinforcement Learning (RL) is based on the idea of learning through **rewards**.
+
+A simplified RL loop looks like:
+
+```text
+Agent
+  ↓
+Takes action
+  ↓
+Environment
+  ↓
+Receives reward
+  ↓
+Learns from reward
+  ↓
+Takes better actions
+```
+
+For an LLM:
+
+```text
+Prompt
+  ↓
+LLM
+  ↓
+Generates response
+  ↓
+Reward
+  ↓
+Model is optimized
+  ↓
+Improved future responses
+```
+
+Instead of explicitly telling the model the correct answer every time, the training system can evaluate its behavior and provide a reward.
+
+For example:
+
+```text
+Response A → Reward: 0.2
+Response B → Reward: 0.8
+Response C → Reward: 0.4
+```
+
+The training process encourages behavior that produces higher rewards.
+
+---
+
+# 7. Reward Functions
+
+The reward function is extremely important.
+
+The model will optimize whatever objective it is given.
+
+Suppose you reward:
+
+```text
+Long answers = high reward
+```
+
+The model may learn to produce extremely long answers.
+
+But that doesn't necessarily mean the answers are better.
+
+This creates a fundamental problem:
+
+```text
+What humans actually want
+          ≠
+What the reward function measures
+```
+
+The model may optimize the measurable objective while failing to achieve the actual intended objective.
+
+This is commonly associated with concepts such as:
+
+* Reward hacking
+* Specification gaming
+* Reward misspecification
+
+Therefore:
+
+> **A powerful optimizer combined with a bad objective can produce very undesirable behavior.**
+
+---
+
+# 8. Reasoning Through Reinforcement Learning
+
+One of the important developments in modern AI is the use of reinforcement learning to encourage reasoning.
+
+Consider mathematics.
+
+One approach is:
+
+```text
+Question
+   +
+Human-written solution
+   ↓
+Supervised Fine-Tuning
+   ↓
+Model learns to imitate
+```
+
+Another approach is:
+
+```text
+Question
+   ↓
+Model attempts solution
+   ↓
+Check whether answer is correct
+   ↓
+Reward
+   ↓
+Model learns
+```
+
+The second approach can allow the model to discover strategies that increase its probability of reaching correct answers.
+
+The training system doesn't necessarily have to specify every step of the reasoning process.
+
+It can instead provide a reliable signal about whether the outcome is successful.
+
+---
+
+# 9. Reasoning and Emergent Strategies
+
+When reinforcement learning is applied to problems with verifiable outcomes, models can potentially develop useful strategies.
+
+For example:
+
+```text
+Problem
+   ↓
+Attempt
+   ↓
+Result is incorrect
+   ↓
+Low reward
+   ↓
+Try different strategy
+   ↓
+Correct result
+   ↓
+High reward
+```
+
+Over many training iterations, behaviors that lead to successful outcomes become increasingly favored.
+
+This creates an important distinction:
+
+### Imitation
+
+```text
+Human solution
+     ↓
+Model imitates solution
+```
+
+### Optimization
+
+```text
+Problem
+     ↓
+Model searches for successful strategy
+     ↓
+Reward
+     ↓
+Model improves strategy
+```
+
+The second approach can potentially produce behavior that wasn't explicitly demonstrated.
+
+---
+
+# 10. AlphaGo and Reinforcement Learning
+
+A major demonstration of this principle came from systems trained to play Go.
+
+Instead of simply memorizing human moves, reinforcement learning allows an agent to improve through gameplay.
+
+The general loop is:
+
+```text
+Play
+ ↓
+Outcome
+ ↓
+Reward
+ ↓
+Learn
+ ↓
+Play again
+ ↓
+Improve
+```
+
+As the system becomes stronger, it can discover strategies that humans may not have explicitly taught it.
+
+This demonstrates an important principle:
+
+> **When an environment provides a reliable reward signal, reinforcement learning can discover effective strategies through optimization.**
+
+This idea is highly relevant to reasoning models.
+
+---
+
+# 11. RLHF — Reinforcement Learning From Human Feedback
+
+A major technique for improving language models is **Reinforcement Learning From Human Feedback (RLHF)**.
+
+The basic pipeline is:
+
+```text
+Prompt
+   ↓
+LLM generates multiple responses
+   ↓
+Humans compare responses
+   ↓
+Preference data
+   ↓
+Reward model
+   ↓
+Reinforcement learning
+   ↓
+Improved LLM
+```
+
+Suppose a model generates two responses:
+
+```text
+Response A
+Response B
+```
+
+A human evaluator may prefer A.
+
+After collecting many such comparisons, a reward model can learn patterns associated with human preferences.
+
+The language model can then be optimized toward responses that receive higher predicted rewards.
+
+---
+
+# 12. Why RLHF Is Important
+
+Pretraining primarily teaches the model about language and information.
+
+SFT teaches it to follow instructions.
+
+RLHF helps shape its behavior according to preferences.
+
+A simplified progression is:
+
+```text
+PRETRAINING
+"What does language look like?"
+        ↓
+SFT
+"How should I respond to instructions?"
+        ↓
+RLHF / RL
+"What kinds of responses should I prefer?"
+```
+
+This explains why a base model and an assistant model can behave very differently even when they share the same underlying architecture.
+
+---
+
+# 13. Knowledge vs Behavior
+
+An important distinction is:
+
+```text
+Knowledge
+   ≠
+Behavior
+```
+
+A model can contain extensive information but still behave poorly.
+
+For example, a model might know:
+
+* Programming
+* Mathematics
+* Science
+* History
+
+but still need additional training to learn:
+
+* How to follow instructions
+* How to structure answers
+* How to interact with users
+* How to avoid undesirable behavior
+* How to prioritize useful responses
+
+Post-training is therefore not simply about adding knowledge.
+
+It is largely about **shaping behavior**.
+
+---
+
+# 14. Deep Reasoning Models
+
+Modern reasoning models introduce another important idea:
+
+> The model can spend additional computation trying to solve a problem before producing its final answer.
+
+Instead of:
+
+```text
+Prompt → Immediate answer
+```
+
+the system can operate more like:
+
+```text
+Prompt
+ ↓
+Reason
+ ↓
+Explore possibilities
+ ↓
+Check
+ ↓
+Correct mistakes
+ ↓
+Produce answer
+```
+
+This means that inference-time computation can become an important part of model capability.
+
+A difficult problem may benefit from giving the model more opportunity to reason before answering.
+
+---
+
+# 15. The Importance of Verifiable Rewards
+
+Reinforcement learning works particularly well when success can be evaluated reliably.
+
+Examples include:
+
+```text
+Mathematics
+→ Is the answer correct?
+
+Programming
+→ Does the program pass the tests?
+
+Game playing
+→ Did the agent win?
+
+Puzzle solving
+→ Was the puzzle solved?
+```
+
+These tasks have relatively clear reward signals.
+
+Other tasks are much harder:
+
+```text
+Is this essay beautiful?
+Is this explanation insightful?
+Is this response emotionally appropriate?
+Is this advice wise?
+```
+
+There may be no simple objective measurement.
+
+Therefore, the usefulness of RL depends heavily on the availability and quality of the reward signal.
+
+---
+
+# 16. LLMs as Components of Larger Systems
+
+The future of AI is not necessarily just about making a larger language model.
+
+A powerful AI application can combine an LLM with multiple external components.
+
+For example:
+
+```text
+                 ┌─────────────┐
+                 │     LLM     │
+                 └──────┬──────┘
+                        │
+       ┌────────────────┼────────────────┐
+       ↓                ↓                ↓
+    Search            Code             Tools
+       ↓                ↓                ↓
+    Internet        Execution        APIs
+       │                │                │
+       └────────────────┼────────────────┘
+                        ↓
+                    Observation
+                        ↓
+                       LLM
+                        ↓
+                    Final answer
+```
+
+The model can:
+
+1. Understand the user's request
+2. Decide what needs to be done
+3. Use a tool
+4. Observe the result
+5. Reason about the result
+6. Use another tool if necessary
+7. Produce the final response
+
+This is closer to an **AI system** than simply a language model.
+
+---
+
+# 17. Tool Use
+
+Tools can compensate for weaknesses inherent in language models.
+
+Examples:
+
+| Task                | Suitable Component      |
+| ------------------- | ----------------------- |
+| Natural language    | LLM                     |
+| Arithmetic          | Calculator              |
+| Exact computation   | Python                  |
+| Database queries    | Database                |
+| Current information | Search                  |
+| Code execution      | Programming environment |
+| Image generation    | Image model             |
+| Structured data     | APIs                    |
+| Long-term storage   | Database / memory       |
+
+This creates a general engineering principle:
+
+> **Use the LLM for what it is good at and deterministic tools for what they are good at.**
+
+---
+
+# 18. AI Agents
+
+Combining reasoning, tools and feedback creates the foundation for AI agents.
+
+A simple agent loop can be represented as:
+
+```text
+Goal
+ ↓
+Reason
+ ↓
+Choose action
+ ↓
+Use tool
+ ↓
+Observe result
+ ↓
+Reason again
+ ↓
+Choose next action
+ ↓
+...
+ ↓
+Complete goal
+```
+
+This differs from a simple chatbot.
+
+A chatbot primarily does:
+
+```text
+Input → Output
+```
+
+An agent can perform:
+
+```text
+Goal
+ ↓
+Plan
+ ↓
+Act
+ ↓
+Observe
+ ↓
+Adapt
+ ↓
+Act again
+```
+
+The distinction becomes increasingly important as AI systems become more capable.
+
+---
+
+# 19. Evaluating LLMs
+
+The rapid development of LLMs makes evaluation extremely important.
+
+Models can be compared using:
+
+* Benchmarks
+* Human evaluations
+* Coding tests
+* Mathematical tests
+* Reasoning evaluations
+* Safety evaluations
+* Task-specific evaluations
+* Real-world application performance
+
+However, benchmarks should not be treated as absolute measures of intelligence.
+
+A model that performs best on one benchmark may not be the best model for a particular application.
+
+The correct question is often:
+
+> **Which model performs best for my specific task, constraints and requirements?**
+
+Important factors include:
+
+```text
+Capability
+Cost
+Latency
+Reliability
+Context length
+Tool use
+Reasoning ability
+Safety
+Deployment requirements
+```
+
+---
+
+# 20. Open and Closed Models
+
+The LLM ecosystem contains different types of models.
+
+### Closed models
+
+Access is primarily provided through an API or hosted service.
+
+Advantages may include:
+
+* Strong performance
+* Managed infrastructure
+* Easy access
+* No need to manage large hardware requirements
+
+### Open-weight models
+
+Model weights are made available for users to download and run or modify.
+
+Advantages can include:
+
+* Greater control
+* Local deployment
+* Fine-tuning
+* Research access
+* Greater transparency into the model itself
+
+The best choice depends on the application.
+
+---
+
+# 21. Building With Existing Models
+
+You do not necessarily need to train a giant LLM from scratch to build useful AI systems.
+
+A practical development process can look like:
+
+```text
+Existing model
+      ↓
+Experiment
+      ↓
+Evaluate
+      ↓
+Prompt engineering
+      ↓
+Tool integration
+      ↓
+Fine-tuning if necessary
+      ↓
+Production AI application
+```
+
+For many applications, using an existing model is dramatically more practical than attempting to train a frontier model from scratch.
+
+---
+
+# 22. The Complete Mental Model
+
+The development of modern LLM systems can be understood as a progression:
+
+```text
+                 LARGE-SCALE DATA
+                       ↓
+                  PRETRAINING
+                       ↓
+                  BASE MODEL
+                       ↓
+            SUPERVISED FINE-TUNING
+                       ↓
+            INSTRUCTION FOLLOWING
+                       ↓
+              REINFORCEMENT LEARNING
+                       ↓
+              REASONING / BEHAVIOR
+                       ↓
+                 TOOL USE
+                       ↓
+                  AI SYSTEM
+                       ↓
+                  AI AGENT
+```
+
+At the lowest level, the fundamental mechanism remains:
+
+```text
+Tokens
+   ↓
+Neural Network
+   ↓
+Probability Distribution
+   ↓
+Next Token
+   ↓
+Next Token
+   ↓
+Next Token
+   ↓
+...
+```
+
+But modern AI systems build increasingly sophisticated layers around this basic mechanism.
+
+---
+
+# 23. Key Concepts to Remember
+
+### Tokenization
+
+Text is converted into tokens before being processed by the model.
+
+### Next-token prediction
+
+The fundamental pretraining objective is predicting the next token.
+
+### Base model
+
+The result of large-scale pretraining.
+
+### Supervised Fine-Tuning
+
+Uses examples to teach the model how to follow instructions and behave as an assistant.
+
+### Reinforcement Learning
+
+Optimizes behavior according to a reward signal.
+
+### RLHF
+
+Uses human preferences to create a reward signal for improving model behavior.
+
+### Reward hacking
+
+The model discovers ways to maximize the reward without necessarily achieving the intended goal.
+
+### Jagged intelligence
+
+LLMs can have highly uneven strengths and weaknesses.
+
+### Reasoning
+
+Models can be trained or prompted to spend additional computation working through difficult problems.
+
+### Tool use
+
+External tools can compensate for weaknesses of the language model.
+
+### AI agents
+
+Systems that combine models, tools, actions, observations and feedback to accomplish goals.
+
+---
+
+# 24. Final Mental Model
+
+The most useful way to think about modern LLMs is:
+
+```text
+              PRETRAINING
+                   ↓
+        Learn patterns in data
+                   ↓
+              BASE MODEL
+                   ↓
+                  SFT
+                   ↓
+        Learn instruction following
+                   ↓
+                  RL
+                   ↓
+       Optimize desired behavior
+                   ↓
+              REASONING
+                   ↓
+       Spend computation on problems
+                   ↓
+              TOOL USE
+                   ↓
+       Interact with external systems
+                   ↓
+             AI SYSTEM
+                   ↓
+              AI AGENT
+```
+
+The central idea is that **an LLM is not the entire AI system**.
+
+The language model provides powerful capabilities in language, pattern recognition and reasoning, but the strongest applications combine it with:
+
+```text
+LLM
++
+Data
++
+Tools
++
+Search
++
+Code
++
+Memory
++
+External APIs
++
+Feedback
++
+Evaluation
+```
+
+The future of AI therefore involves not only building better models, but also building better **systems around those models**.
